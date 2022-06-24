@@ -6,7 +6,7 @@ classdef PointPicker < handle
             fh = uifigure();
             fh.Position = [50 50 1200 800];
             fh.Resize = "off";
-            fh.Name = "Point Picker";
+            fh.Name = app.FIGURE_BASE_NAME;
             app.fh = fh;
 
             axh = uiaxes(fh);
@@ -71,6 +71,7 @@ classdef PointPicker < handle
             nextb.ButtonPushedFcn = @app.read_next;
             app.next_button = nextb;
 
+            app.update_figure_name();
             app.update_clear_data_button();
             app.update_navigation_controls();
         end
@@ -96,6 +97,8 @@ classdef PointPicker < handle
 
             app.pick_columns();
             app.read_current();
+
+            app.update_figure_name();
             app.update_clear_data_button();
             app.update_navigation_controls();
         end
@@ -154,22 +157,25 @@ classdef PointPicker < handle
             app.signal_ph.Visible = false;
             app.peak_ph.Visible = false;
 
+            app.update_figure_name();
             app.update_clear_data_button();
             app.update_navigation_controls();
         end
 
         function read_next(app, ~, ~)
-            assert(0 < app.file_count);
+            assert(app.check_files_are_loaded());
             app.file_index = app.file_index + 1;
-            read_current(app);
-            update_navigation_controls(app);
+            app.read_current();
+            app.update_figure_name();
+            app.update_navigation_controls();
         end
 
         function read_previous(app, ~, ~)
-            assert(0 < app.file_count);
+            assert(app.check_files_are_loaded());
             app.file_index = app.file_index - 1;
-            read_current(app);
-            update_navigation_controls(app);
+            app.read_current();
+            app.update_figure_name();
+            app.update_navigation_controls();
         end
 
         function select_peak(app, ~, event)
@@ -231,6 +237,10 @@ classdef PointPicker < handle
             t = readtable(app.files(app.file_index));
         end
 
+        function n = get_current_file_name(app)
+            [~, n, ~] = fileparts(app.files(app.file_index));
+        end
+
         function write_current(app)
             writetable(app.loaded_table, app.files(app.file_index));
         end
@@ -259,8 +269,22 @@ classdef PointPicker < handle
             app.yaxis_field = c(config.metanames(2));
         end
 
+        function update_figure_name(app)
+            if app.check_files_are_loaded()
+                file_name = app.get_current_file_name();
+                name = sprintf("%s: %s", app.FIGURE_BASE_NAME, file_name);
+            else
+                name = app.FIGURE_BASE_NAME;
+            end
+            app.fh.Name = name;
+        end
+
         function update_clear_data_button(app)
             app.clear_data_button.Enable = ~isempty(app.files);
+        end
+
+        function result = check_files_are_loaded(app)
+            result = 0 < app.file_count;
         end
 
         function update_navigation_controls(app)
@@ -268,7 +292,7 @@ classdef PointPicker < handle
 
             are_columns_picked = app.xaxis_field ~= "" && app.yaxis_field ~= "";
 
-            are_files_loaded = 0 < app.file_count;
+            are_files_loaded = app.check_files_are_loaded();
             if are_files_loaded
                 label = sprintf("%i / %i", app.file_index, app.file_count);
             else
@@ -308,6 +332,7 @@ classdef PointPicker < handle
     end
 
     properties (Constant)
+        FIGURE_BASE_NAME = "Point Picker";
         IS_PICKED_FIELD (1,1) string = "IS_PICKED__";
     end
 end
